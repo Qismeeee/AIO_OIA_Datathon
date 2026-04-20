@@ -111,6 +111,9 @@ def get_holiday_impact_features(df: pd.DataFrame, date_col: str = "Date") -> pd.
     """
     df = df.copy()
 
+    if "is_holiday" not in df.columns:
+        raise ValueError("DataFrame must contain 'is_holiday' column. Call add_holiday_features() first.")
+
     if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
         df[date_col] = pd.to_datetime(df[date_col])
 

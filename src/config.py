@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
 from datetime import datetime
+from src.features.holiday import VIETNAM_HOLIDAYS
 
 PROJECT_ROOT = Path(__file__).parent.parent
-SRC_DIR = Path(__file__).parent          
-DATA_DIR = SRC_DIR / "data"            
+SRC_DIR = Path(__file__).parent
+DATA_DIR = SRC_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
@@ -13,16 +14,12 @@ SUBMISSIONS_DIR = PROJECT_ROOT / "submissions"
 REPORT_DIR = PROJECT_ROOT / "report"
 FIGURES_DIR = REPORT_DIR / "figures"
 
-# Create directories if not exist
-for directory in [PROCESSED_DATA_DIR, SUBMISSIONS_DIR, FIGURES_DIR]:
+for directory in [PROCESSED_DATA_DIR, SUBMISSIONS_DIR, FIGURES_DIR, MODELS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
-# ============ DATA CONFIG ============
 DATA_START_DATE = "2012-07-04"
 DATA_END_DATE = "2022-12-31"
-TRAIN_TEST_SPLIT_DATE = "2022-06-30"  
-
-# Files
+TRAIN_TEST_SPLIT_DATE = "2022-06-30"
 CSV_FILES = {
     "sales": RAW_DATA_DIR / "sales.csv",
     "sales_test": RAW_DATA_DIR / "sales_test.csv",
@@ -40,7 +37,6 @@ CSV_FILES = {
     "geography": RAW_DATA_DIR / "geography.csv",
 }
 
-# Processed data
 PROCESSED_FILES = {
     "daily_features": PROCESSED_DATA_DIR / "daily_features.parquet",
     "cv_splits": PROCESSED_DATA_DIR / "cv_splits.pickle",
@@ -50,7 +46,7 @@ PROCESSED_FILES = {
 
 # ============ MODEL CONFIG ============
 RANDOM_SEED = 42
-N_SPLITS = 5  # Time series cross-validation splits
+N_SPLITS = 5
 TEST_SIZE = 0.2
 
 # LightGBM hyperparameters
@@ -83,7 +79,7 @@ PROPHET_PARAMS = {
 }
 
 # SARIMA parameters (p,d,q)x(P,D,Q,s)
-SARIMA_PARAMS = (1, 1, 1, 365)  # (p,d,q) x seasonal_period
+SARIMA_PARAMS = (1, 1, 1, 365)
 
 # Ensemble weights
 ENSEMBLE_WEIGHTS = {
@@ -92,40 +88,15 @@ ENSEMBLE_WEIGHTS = {
     "sarima": 0.2,
 }
 
-# ============ FEATURE CONFIG ============
-# Lag features (days)
 LAG_DAYS = [1, 7, 30, 365]
-
-# Rolling windows (days)
 ROLLING_WINDOWS = [7, 30]
-
-# Holiday dates (Vietnam)
-VIETNAM_HOLIDAYS = {
-    "2022-01-01": "New Year",
-    "2022-02-01": "Lunar New Year",
-    "2022-02-02": "Lunar New Year",
-    "2022-02-03": "Lunar New Year",
-    "2022-04-30": "Reunification Day",
-    "2022-05-01": "International Labor Day",
-    "2022-09-02": "National Day",
-    "2022-03-08": "Women's Day",
-    # Add more as needed
-}
-
-# ============ LOGGING & DEBUG ============
 LOG_LEVEL = "INFO"
 VERBOSE = True
-
-# ============ SUBMISSION CONFIG ============
 SUBMISSION_TEMPLATE = {
-    "date": None,  # Will be filled with test dates
-    "revenue": None,  # Will be filled with predictions
+    "date": None,
+    "revenue": None,
 }
-
-# ============ PERFORMANCE TARGETS ============
-BASELINE_RMSE_TARGET = 20000  # Seasonal naive baseline
+BASELINE_RMSE_TARGET = 20000
 LGBM_RMSE_TARGET = 15000
 ENSEMBLE_RMSE_TARGET = 12000
-
-# ============ ENSEMBLE METHOD ============
-ENSEMBLE_METHOD = "weighted_average"  # or "stacking", "voting"
+ENSEMBLE_METHOD = "weighted_average"
