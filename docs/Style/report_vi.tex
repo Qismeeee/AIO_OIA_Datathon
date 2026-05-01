@@ -3,13 +3,13 @@
 % ============================================================
 \documentclass{article}
 
-\usepackage[final, nonatbib, preprint]{neurips_2025}
+\usepackage[final, nonatbib]{neurips_2025}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T5]{fontenc}
 \usepackage[vietnamese]{babel}
 
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
@@ -18,7 +18,6 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{subcaption}
-\usepackage{caption}
 \usepackage{multirow}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -27,24 +26,14 @@
 
 \graphicspath{{figures/}{../../report/figures/eda/}{../../report/figures/}}
 
-% Compact floats & captions
-\setlength{\abovecaptionskip}{3pt}
-\setlength{\belowcaptionskip}{0pt}
-\setlength{\textfloatsep}{7pt plus 2pt minus 3pt}
-\setlength{\intextsep}{6pt plus 2pt minus 3pt}
-\setlength{\floatsep}{6pt plus 2pt minus 3pt}
-
-% Compact list
-\setlist{nosep, leftmargin=1.2em}
-
 % ============================================================
 \title{Phân Tích Kinh Doanh Đa Chiều và Dự Báo Doanh Thu\\
 Thương Mại Điện Tử Thời Trang Việt Nam}
 
 \author{%
   Lê Anh Quân \quad Trần Long Vũ \quad Quách Minh Quân\\
-  Nhóm AIO\_OIA --- Datathon 2026 --- The Gridbreakers, Vòng~1\\
-  \small\textbf{GitHub:} \url{https://github.com/Qismeeee/AIO_OIA_Datathon}
+  Nhóm AIO\_OIA --- Datathon 2026 --- The Gridbreakers\\
+  \small GitHub: \url{https://github.com/Qismeeee/AIO_OIA_Datathon}
 }
 
 \begin{document}
@@ -52,323 +41,273 @@ Thương Mại Điện Tử Thời Trang Việt Nam}
 
 % ============================================================
 \begin{abstract}
-Phân tích 13 bảng dữ liệu (714.000+ giao dịch, 2012--2022) của một doanh nghiệp
-e-commerce thời trang Việt Nam theo bốn cấp độ
-\textit{Descriptive--Diagnostic--Predictive--Prescriptive}.
-Năm chuỗi phân tích hội tụ vào \textbf{bốn lỗ hổng cấu trúc} ước tính gây
-thất thoát \textbf{653--773 triệu~VND/năm} (56--66\% doanh thu 2022).
-Pipeline dự báo calendar-only LightGBM kết hợp Era-Based Weighting,
-3-way ensemble blending, và hiệu chỉnh ``Urban Blowout'' đạt
-MAE~\textbf{630.454~VND/ngày} trên Kaggle.
-Mã nguồn, notebook, và submission tại:
-\url{https://github.com/Qismeeee/AIO_OIA_Datathon}.
+Bài toán tối ưu vận hành cho doanh nghiệp thương mại điện tử thời trang
+đòi hỏi không chỉ dự báo chính xác mà còn khả năng chẩn đoán các điểm nghẽn
+tăng trưởng từ dữ liệu giao dịch lịch sử.
+Báo cáo này khai thác 13 bảng dữ liệu (hơn 714.000 giao dịch, giai đoạn 2012--2022)
+để phân tích đa chiều hoạt động kinh doanh theo các trục doanh thu, khách hàng,
+tồn kho, khuyến mãi và hoàn trả.
+Kết quả cho thấy bốn lỗ hổng vận hành nội bộ đang gây thất thoát ước tính
+653--773 triệu VND mỗi năm, tương đương 56--66\% doanh thu năm 2022,
+và hoàn toàn có thể phục hồi mà không cần mở rộng thị trường.
+Ở bài toán dự báo doanh thu hàng ngày cho giai đoạn 2023--2024,
+chúng tôi đề xuất pipeline LightGBM dựa hoàn toàn trên đặc trưng lịch,
+kết hợp trọng số theo giai đoạn kinh doanh và hiệu chỉnh hành vi bán lỗ mùa hè;
+COGS được suy ra từ Revenue nhân tỷ lệ thực nghiệm theo tháng.
 \end{abstract}
 
 % ============================================================
-\section{Phân Tích Khám Phá Dữ Liệu (EDA)}
+\section{Phân Tích Khám Phá Dữ Liệu}
 \label{sec:eda}
 % ============================================================
 
-Năm chuỗi phân tích (story) được thiết kế theo mạch \textit{Descriptive → Diagnostic → Predictive → Prescriptive}, mỗi story khai thác đa bảng dữ liệu và hội tụ vào một đề xuất hành động định lượng.
+Bốn phân tích dưới đây đi từ mô tả hiện trạng (\textit{Descriptive}),
+chẩn đoán nguyên nhân (\textit{Diagnostic}), dự báo hệ quả (\textit{Predictive}),
+đến đề xuất hành động định lượng (\textit{Prescriptive}).
 
 % -----------------------------------------------------------
-\subsection{Story 1: Giải Mã Một Thập Kỷ Doanh Thu}
+\subsection{Doanh thu: sụt giảm sản lượng qua một thập kỷ}
 
-\begin{figure}[htbp]
+\begin{figure}[h]
 \centering
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s1a_revenue_trend.png}
-  \caption{Doanh thu hàng năm 2012--2022 với YoY growth.}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s1a_revenue_trend.png}
+  \caption{Doanh thu hàng năm và tăng trưởng YoY.}
+\end{subfigure}\hspace{0.03\linewidth}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s1b_seasonality_heatmap.png}
+  \caption{Phân bổ doanh thu theo tháng (\% trong năm).}
 \end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s1b_seasonality_heatmap.png}
-  \caption{Heatmap mùa vụ theo tháng--năm.}
-\end{subfigure}
-\caption{Story 1: Đỉnh 2,10 tỷ (2016) giảm 44\% về 1,17 tỷ (2022); COGS/Revenue ổn định 87,5\%.}
+\caption{Doanh thu đạt đỉnh 2,10 tỷ VND năm 2016 rồi giảm 44\% về 1,17 tỷ vào 2022;
+COGS/Revenue ổn định quanh 87,5\% --- doanh nghiệp mất doanh thu vì \textit{bán ít đi}.}
 \label{fig:s1}
 \end{figure}
 
-\textbf{Descriptive:}
-Tổng doanh thu tích lũy 16,4 tỷ VND qua 3.833 ngày. Đỉnh 2016 đạt 2,10 tỷ, rồi giảm về 1,17 tỷ (2022). Q2 (Tháng 4--6) chiếm \textbf{37,6\%} doanh thu năm, gấp 2,7$\times$ tháng~1.
-
-\textbf{Diagnostic:}
-COGS/Revenue duy trì \textbf{87,5\%} suốt 10 năm --- sụt giảm là do \textit{thể tích bán hàng}, không phải biên gộp bị bào mòn. Sụt giảm bắt đầu \textbf{từ 2019} ($-$38,6\% so với 2018), \textit{trước} COVID, xác nhận nguyên nhân cấu trúc thị trường (bão hòa kênh, cạnh tranh mới).
-
-\textbf{Predictive:}
-Slope phục hồi 2020--2022 cho thấy 2023 đạt 1,3--1,5 tỷ; Q2/2023 $\approx$ 490--565 triệu. Pattern năm lẻ/chẵn: biên gộp năm lẻ $\sim$11\%, năm chẵn $\sim$16\% do chiến lược ``Urban Blowout'' tháng~8.
-
-\textbf{Prescriptive:}
-\textbf{(1)} Tập trung 40\% ngân sách marketing vào Q2 --- ROI gấp 2,5$\times$ Q4;
-\textbf{(2)} Chốt tồn kho trước 1/4 để đón mùa đỉnh 90 ngày;
-\textbf{(3)} Đặt cảnh báo tự động khi COGS/Rev $>$ 90\%.
+Tổng doanh thu 2012--2022: 16,4 tỷ VND. Suy giảm bắt đầu từ 2019 ($-$38,6\%), \textit{trước} COVID, gợi ý nguyên nhân cấu trúc thị trường.
+Heatmap (Hình~\ref{fig:s1}b): Q2 (tháng 4--6) đóng góp 37,6\% doanh thu năm, gấp 2,7 lần tháng~1.
+\textit{Đề xuất:} Tập trung 40\% ngân sách marketing vào Q2; chốt tồn kho trước tháng~4.
 
 % -----------------------------------------------------------
-\subsection{Story 2: Phễu Khách Hàng --- Lỗ Hổng 263 Triệu}
+\subsection{Khách hàng: 80\% cơ sở không quay lại mua}
 
-\begin{figure}[htbp]
+\begin{figure}[h]
 \centering
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s2a_customer_activation.png}
-  \caption{Activation rate sụp từ 100\% $\to$ 20\%.}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s2a_customer_activation.png}
+  \caption{Số người mua và tỷ lệ kích hoạt theo năm.}
+\end{subfigure}\hspace{0.03\linewidth}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s2b_revenue_per_buyer.png}
+  \caption{Doanh thu bình quân trên mỗi người mua.}
 \end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s2b_revenue_per_buyer.png}
-  \caption{Doanh thu/người mua ổn định 42--51K/năm.}
-\end{subfigure}
-\caption{Story 2: 121.930 đăng ký nhưng chỉ 24.696 người mua (2022). RFM: 27,7\% Never Purchased.}
+\caption{121.930 khách đăng ký, năm 2022 chỉ còn 24.696 người mua (20\%);
+doanh thu/người mua ổn định 42--51K VND/năm --- vấn đề là \textit{lượng}, không phải \textit{chất}.}
 \label{fig:s2}
 \end{figure}
 
-\textbf{Descriptive:}
-Cơ sở 121.930 khách hàng đăng ký; 2022 chỉ 24.696 người mua --- tỷ lệ kích hoạt $\sim$20\%. RFM: 27,7\% Never Purchased, 20,1\% Champions, 10,9\% At Risk.
-
-\textbf{Diagnostic:}
-Doanh thu/người mua ổn định (42--51K VND/năm) --- người mua không chi ít hơn; 80\% cơ sở đơn giản không quay lại. Phát hiện phản trực giác: khách trả hàng có review OK có churn rate cao nhất (24,7\%), do selection bias --- nhóm này kỳ vọng cao nhưng thất vọng.
-
-\textbf{Predictive:}
-Xu hướng giảm 2--3 điểm/năm; đến 2025 dưới 15\% đăng ký còn mua.
-
-\textbf{Prescriptive:}
-Phục hồi 5 điểm kích hoạt $=$ \textbf{+263 triệu VND/năm}.
-\textbf{(1)} Win-back 90 ngày cho cohort 2019--2021: est. 5.600 khách $\to$ +263 triệu;
-\textbf{(2)} Email follow-up 7 ngày sau lần mua đầu;
-\textbf{(3)} KPI mới: cohort retention 3 tháng thay tổng đăng ký.
+RFM~\cite{fader2005}: 27,7\% chưa bao giờ mua, 10,9\% có nguy cơ rời bỏ.
+Doanh thu/người mua không giảm (42--51K VND/năm) --- 80\% khách đơn giản không quay lại.
+Phát hiện: khách trả hàng có review bình thường lại rời bỏ nhiều nhất (24,7\%).
+\textit{Đề xuất:} Win-back 90 ngày cho cohort 2019--2021 (ước tính +263 triệu VND/năm);
+thay KPI ``tổng đăng ký'' bằng cohort retention 3 tháng.
 
 % -----------------------------------------------------------
-\subsection{Story 3: Tồn Kho --- Nghịch Lý 96\% Giao Hàng, 67\% Hết Hàng}
+\subsection{Tồn kho: giao hàng tốt nhưng không có hàng để giao}
 
-\begin{figure}[htbp]
+\begin{figure}[h]
 \centering
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s3a_stockout_heatmap.png}
-  \caption{Stockout đồng đều quanh năm --- lỗi chính sách.}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s3b_lost_revenue.png}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s3a_stockout_heatmap.png}
+  \caption{Tỷ lệ hết hàng theo danh mục và tháng.}
+\end{subfigure}\hspace{0.03\linewidth}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s3b_lost_revenue.png}
   \caption{Ước tính doanh thu thất thoát do hết hàng.}
 \end{subfigure}
-\caption{Story 3: Fill rate 96,1\% khi có hàng, nhưng 67,3\% thời gian không có hàng.}
+\caption{67,3\% bản ghi tồn kho hết hàng, fill rate khi có hàng đạt 96,1\% --- lỗi chính sách reorder~\cite{cachon2019}, không phải năng lực giao.}
 \label{fig:s3}
 \end{figure}
 
-\textbf{Descriptive \& Diagnostic:}
-67,3\% trong 60.247 bản ghi tồn kho ghi nhận stockout. Fill rate đạt 96,1\% khi có hàng ---
-năng lực giao tuyệt vời, nhưng hàng chỉ có mặt 33\% thời gian.
-Stockout đồng đều quanh năm (không theo mùa) $\Rightarrow$ \textbf{lỗi chính sách reorder point},
-không phải lỗi dự báo cầu. Streetwear chịu nặng nhất: 36.993 ngày-sản phẩm hết hàng.
-
-\textbf{Prescriptive:}
-Giảm stockout từ 67\% $\to$ 40\%: \textbf{+120--180 triệu/năm}.
-\textbf{(1)} Safety stock 200 SKU đầu: buffer $Z_{0.95} \cdot \sigma_d \cdot \sqrt{L}$ (15--20 ngày);
-\textbf{(2)} Trigger reorder khi days\_of\_supply $<$ 30; payback $<$ 6 tháng.
+Stockout phân bổ đồng đều quanh năm (không tập trung mùa đỉnh), xác nhận lỗi reorder point.
+Streetwear: 36.993 ngày-sản phẩm hết hàng (52,9\%); tổng thất thoát ước tính 184,6 triệu VND.
+\textit{Đề xuất:} Safety stock 200 SKU bán chạy nhất; reorder khi days\_of\_supply $<$ 30.
+Giảm stockout từ 67\% xuống 40\% thu hồi +150 triệu VND/năm.
 
 % -----------------------------------------------------------
-\subsection{Story 4: Bất Cân Đối Địa Lý và Rò Rỉ Marketing}
+\subsection{Hoàn trả và khuyến mãi: hai rò rỉ doanh thu ẩn giấu}
 
-\begin{figure}[htbp]
+\begin{figure}[h]
 \centering
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s4a_geo_revenue.png}
-  \caption{East 46,5\% doanh thu nhưng per-capita spending đồng đều.}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s5b_returns_analysis.png}
+  \caption{Lý do trả hàng và tỷ lệ trả theo size.}
+\end{subfigure}\hspace{0.03\linewidth}
+\begin{subfigure}[t]{0.46\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{s5a_promo_revenue.png}
+  \caption{So sánh AOV có/không khuyến mãi theo danh mục.}
 \end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s5a_promo_revenue.png}
-  \caption{Promo ngày: $-$11,8\% revenue --- lịch phòng thủ Q4.}
-\end{subfigure}
-\caption{Story 4: Chênh lệch vùng do logistics, không phải nhu cầu; promo chạy sai thời điểm.}
-\label{fig:s4}
-\end{figure}
-
-\textbf{Descriptive:}
-East dẫn 7,64 tỷ (46,5\%), Central 4,94 tỷ (30,1\%), West 3,85 tỷ (23,4\%).
-Ngày có promo: trung bình 3,99 triệu VND, thấp hơn ngày thường 4,52 triệu ($-$11,8\%).
-
-\textbf{Diagnostic:}
-Doanh thu/khách đăng ký gần bằng nhau giữa ba vùng: West chi ngang East \textit{khi mua được}.
-Giao East 1 ngày vs.\ West 2--4 ngày --- chênh lệch \textbf{logistics}, không phải nhu cầu.
-44,5\% số ngày có promo, nhưng promo tập trung Q4 (cầu tự nhiên thấp) --- lịch \textit{phòng thủ} thay vì khuếch đại Q2.
-
-\textbf{Prescriptive:}
-\textbf{(1)} 3PL tại Cần Thơ/Vĩnh Long cho next-day delivery: \textbf{+150--250 triệu/năm};
-\textbf{(2)} Chuyển 30\% promo Q4 $\to$ Q2: \textbf{+40--60 triệu/quý};
-\textbf{(3)} Ship miễn phí West từ 150K (vs.\ 200K toàn quốc).
-
-% -----------------------------------------------------------
-\subsection{Story 5: Wrong\_Size --- Lỗi Hệ Thống 230 Triệu}
-
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{s5b_returns_analysis.png}
-  \caption{Wrong\_size 34,9\%, đồng đều mọi category (5,4--5,7\%).}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.47\linewidth}
-  \includegraphics[width=\textwidth]{story2_intervention_roi.png}
-  \caption{ROI ước tính cho từng can thiệp.}
-\end{subfigure}
-\caption{Story 5: Tỷ lệ trả hàng 5,57\%; wrong\_size chiếm 34,9\% --- lỗi platform, không phải sản phẩm.}
+\caption{Wrong\_size chiếm 34,9\% lý do trả hàng ở mọi danh mục --- lỗi platform~\cite{misra2018};
+ngày khuyến mãi thấp hơn ngày thường 11,8\%.}
 \label{fig:s5}
 \end{figure}
 
-\textbf{Diagnostic:}
-Tỷ lệ trả hàng 5,57\% với \texttt{wrong\_size} chiếm 34,9\% ở \textit{mọi} danh mục (5,4--5,7\%) ---
-đồng đều = lỗi hạ tầng platform (thiếu size guide theo cm), không phải lỗi sản phẩm riêng lẻ.
-Size S có tỷ lệ trả cao nhất (5,65\%); Streetwear chịu 35\% return.
-
-\textbf{Prescriptive:}
-Giải quyết 50\% lỗi wrong\_size: \textbf{+230 triệu/năm}.
-\textbf{(1)} Size guide bảng đo cm + trường phản hồi kích cỡ khi review;
-\textbf{(2)} Đo hiệu quả bằng A/B test trên Streetwear trước, mở rộng sau.
+Tỷ lệ trả hàng 5,57\%; \texttt{wrong\_size} chiếm 34,9\% đồng đều mọi danh mục --- lỗi hạ tầng platform, không phải sản phẩm.
+38,4\% đơn hàng có promo nhưng ngày promo doanh thu thấp hơn 11,8\% --- lịch phòng thủ Q4~\cite{vanheerde2004} thay vì khuếch đại Q2.
+\textit{Đề xuất:} (1)~Size guide đo cm, ước tính +230 triệu/năm;
+(2)~Chuyển 30\% ngân sách promo từ Q4 sang Q2: +40--60 triệu/quý.
 
 % -----------------------------------------------------------
-\subsection{Tổng Hợp: Bốn Lỗ Hổng --- 653--773 Triệu VND/Năm}
+\subsection{Tổng hợp}
 
-\vspace{3pt}
-\begin{table}[htbp]
+\begin{table}[h]
 \centering
-\footnotesize
-\caption{Bốn lỗ hổng cấu trúc --- tiềm năng phục hồi không cần mở rộng thị trường.}
+\small
+\caption{Bốn lỗ hổng --- tiềm năng phục hồi 653--773 triệu VND/năm mà không cần mở rộng thị trường.}
 \label{tab:gaps}
 \begin{tabular}{lrll}
 \toprule
-\textbf{Lỗ hổng} & \textbf{VND/năm} & \textbf{Ưu tiên} & \textbf{Payback} \\
+Lỗ hổng & VND/năm & Ưu tiên & Payback \\
 \midrule
 Kích hoạt khách hàng ($\sim$20\%)  & +263 triệu & Cao  & 3 tháng \\
-Hết hàng 67,3\% thời gian          & +150 triệu & Cao  & 6 tháng \\
 Lỗi size platform (34,9\% return)  & +230 triệu & Cao  & 2 tháng \\
+Hết hàng 67\% thời gian            & +150 triệu & Cao  & 6 tháng \\
 Lịch promo phòng thủ ($-$11,8\%)   & +50 triệu  & TB   & 1 quý \\
 \midrule
-\textbf{Tổng ước tính} & \textbf{653--773 triệu} & & \\
+Tổng ước tính & 653--773 triệu & & \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-Ưu tiên triển khai: \textbf{size guide} (payback nhanh, cost thấp) $\to$ \textbf{safety stock + win-back} $\to$ \textbf{promo shift Q2}.
 
 % ============================================================
 \section{Hệ Thống Dự Báo Doanh Thu}
 \label{sec:forecast}
 % ============================================================
 
-\subsection{Bài Toán và Dữ Liệu}
+\subsection{Bài toán và thiết kế mô hình}
 
-Dự báo cột \texttt{Revenue} và \texttt{COGS} hàng ngày, giai đoạn 01/01/2023--01/07/2024 (548 ngày).
-Dữ liệu huấn luyện: \texttt{sales.csv} (2012-07-04 đến 2022-12-31, 3.833 dòng).
-Chỉ dùng các file dữ liệu được cung cấp; random\_state=42 toàn bộ pipeline.
+Dự báo \texttt{Revenue} hàng ngày cho 548 ngày (01/01/2023--01/07/2024);
+\texttt{COGS} suy ra từ Revenue nhân tỷ lệ thực nghiệm theo tháng và parity năm.
+Dữ liệu huấn luyện: \texttt{sales.csv} (3.833 dòng, 2012--2022); \texttt{random\_state=42}.
 
-\subsection{Kiến Trúc: Calendar-Only LightGBM + 3-Way Ensemble}
-
-\begin{figure}[htbp]
+\begin{figure}[h]
 \centering
-\begin{subfigure}[b]{0.52\linewidth}
-  \includegraphics[width=\textwidth]{story7_forecast_bridge.png}
-  \caption{Mô hình calendar-only: seasonal shape Golden Era $\to$ horizon 18 tháng.}
-\end{subfigure}
-\hfill
-\begin{subfigure}[b]{0.44\linewidth}
-  \includegraphics[width=\textwidth]{08_feature_importance.png}
+\begin{subfigure}[t]{0.50\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{story7_forecast_bridge.png}
+  \caption{Quỹ đạo 10 năm và dự báo 2023--2024.}
+\end{subfigure}\hspace{0.03\linewidth}
+\begin{subfigure}[t]{0.43\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{08_feature_importance.png}
   \caption{Feature importance (LightGBM gain).}
 \end{subfigure}
-\caption{Kiến trúc dự báo: zero-lag design, Era-Based Weighting, Level Calibration k101.}
+\caption{Calendar-only LightGBM học seasonal shape từ Golden Era (2014--2018), calibrate về mức 2023--2024.}
 \label{fig:forecast}
 \end{figure}
 
-\textbf{Thiết kế zero-lag:}
-Horizon 18 tháng nên \textbf{lag features bị loại hoàn toàn} --- lag 365 ngày tại tháng~6/2024 trỏ đến tháng~6/2023 (nằm trong test set) gây data leakage.
-Thay vào đó, mô hình sử dụng \textbf{85--121 đặc trưng thuần lịch}:
+Với horizon 18 tháng, lag features bị loại hoàn toàn (lag~365 tại tháng~6/2024
+trỏ về test set, gây rò rỉ). Mô hình sử dụng đặc trưng thuần lịch~\cite{taylor2018,makridakis2022}:
+Fourier harmonics $\sin/\cos$ (năm $k$=1--6, tuần $k$=1--3),
+khoảng cách Tết Nguyên Đán, chu kỳ DOM (ngày lương spike 1,47$\times$),
+ngày lễ Việt Nam, và regime flags (năm lẻ/chẵn, trước/sau 2019).
 
-\begin{itemize}
-\item \textbf{Fourier harmonics} $\sin/\cos$ đa tần số (year $k$=1--6, week $k$=1--3, month $k$=1--2)
-\item \textbf{Tết offset} (\texttt{tet\_days\_diff}): khoảng cách từ mỗi ngày đến Tết Nguyên Đán --- Tết lệch 10--19 ngày giữa các năm, không thể thay bằng \texttt{month}
-\item \textbf{10 ngày lễ Việt Nam}: Apr30, May1, Sep2, Hung Kings (âm lịch), Christmas, Mid-Autumn, Vu Lan
-\item \textbf{DOM cycle}: day-of-month + DOM$\times$Month interactions (DOM1 spike 1,47$\times$, DOM2--5 crash 0,62--0,70$\times$)
-\item \textbf{6 cửa sổ promo}: \texttt{spring\_sale}, \texttt{mid\_year}, \texttt{fall\_launch}, \texttt{year\_end}, \texttt{urban\_blowout}, \texttt{rural\_special}
-\item \textbf{Regime flags}: \texttt{is\_odd\_year}, pre/post-2019 regime
-\end{itemize}
+Sample weight $w$=100 cho Golden Era (2014--2018), $w$=1 cho phần còn lại.
+Output calibrate: 2023 daily mean = 4.135.973~VND, 2024 Jan--Jul mean = 4.967.327~VND
+(dịch $\pm$10\% gây +69K MAE, xác nhận ràng buộc cứng).
+Ensemble: cal\_lgbm 65\%, v1\_lgbm 12\% (thêm lunar), diverse pool 23\% (20 models đa seed).
 
-\textbf{Era-Based Weighting:}
-Dữ liệu 2012--2022 trải qua 3 giai đoạn: Noise (2012--2013), Golden Era (2014--2018), Post-COVID (2019--2022).
-Sample weight $w$=100 cho Golden Era, $w$=1 cho phần còn lại --- mô hình ưu tiên học seasonal shape giai đoạn ổn định nhất.
+\subsection{Leakage control và thẩm định}
 
-\textbf{Level Calibration (k101):}
-Output được calibrate về mức baseline: 2023 daily mean = 4.135.973, 2024 Jan--Jul daily mean = 4.967.327.
-Thử thay đổi mức $\pm$10\% gây \textbf{+69K RMSE} --- xác nhận k101 là constraint cứng.
+Walk-forward CV: train $\to$ 2020, validate 2021; train $\to$ 2021, validate 2022.
+Optuna 50 trials. Không dùng Revenue/COGS test làm feature; không dùng lag; không dùng dữ liệu ngoài.
 
-\textbf{3-Way Ensemble Blending:}
-\begin{itemize}
-\item \textbf{cal\_lgbm} (65\%): Golden-era weighted LightGBM ($\alpha$=0,25)
-\item \textbf{v1\_lgbm} (12\%): Tet-aware LightGBM với lunar calendar features
-\item \textbf{Diverse pool} (23\%): 20 models (8 seed-diverse + 12 holiday-aware variants)
-\end{itemize}
+\subsection{Hiệu chỉnh và kết quả}
 
-\subsection{Kiểm Soát Leakage và Thẩm Định Chéo}
+\textbf{(1) August loss leader.}
+Tháng~8 năm lẻ có COGS/Revenue = 1,369 (bán lỗ), nhất quán 5/5 năm lẻ (2013--2021).
+Hiệu chỉnh Revenue tháng~8/2023 về 0,809$\times$ annual mean, gán CR = 1,369.
 
-\textbf{Walk-forward time-series CV}: train 2012--2020 $\to$ validate 2021; train 2012--2021 $\to$ validate 2022.
-Không dùng random k-fold do autocorrelation cao. Optuna 50 trials tối ưu hyperparameters; \texttt{random\_state=42} toàn bộ.
+\textbf{(2) COGS từ Revenue $\times$ tỷ lệ thực nghiệm.}
+COGS không dự báo riêng: $\hat{C}_d = \hat{R}_d \times \text{CR}_{\text{emp}}[m, \text{parity}]$,
+trong đó CR\textsubscript{emp} là tỷ lệ COGS/Revenue trung bình theo tháng và parity năm từ 2019--2022.
+Pha trộn COGS gốc mô hình với COGS thực nghiệm, $\beta^{*}$=0,45.
 
-\textbf{Kiểm soát leakage:}
-(1) Không dùng Revenue/COGS test làm feature;
-(2) Loại hoàn toàn lag features (zero-lag design);
-(3) Không dùng dữ liệu ngoài --- tất cả features derive từ dates và các file được cung cấp.
-
-\subsection{Hiệu Chỉnh ``Urban Blowout'' và Kết Quả}
-
-Phát hiện từ EDA: tháng~8 năm lẻ có COGS/Revenue = \textbf{1,369} (COGS $>$ Revenue) ---
-100\% nhất quán qua tất cả năm lẻ 2013--2021.
-Mô hình gốc dự báo CR = 0,990 cho Aug/2023 (sai), hiệu chỉnh Revenue $\to$ 0,809$\times$ annual mean và CR $\to$ 1,369:
-
-\begin{table}[htbp]
+\begin{table}[h]
 \centering
-\footnotesize
-\caption{Ablation study --- MAE trên Kaggle (Revenue + COGS).}
+\small
+\caption{Ablation study --- MAE trên Kaggle leaderboard.}
 \label{tab:ablation}
 \begin{tabular}{lrl}
 \toprule
-\textbf{Cấu hình} & \textbf{MAE} & \textbf{Ghi chú} \\
+Cấu hình & MAE & Ghi chú \\
 \midrule
-postcovid\_pure (bác bỏ)        & 839.534  & Lockdown 2021 corrupt shape \\
-Baseline k101 ensemble           & 658.012  & Trước hiệu chỉnh \\
-cal\_lgbm\_a25 (single model)    & 647.372  & Golden-era + k101 \\
-aug\_only\_fix (Aug Revenue)     & 636.370  & Thêm hiệu chỉnh Aug \\
-\textbf{3-way ensemble + Aug fix}& \textbf{630.454} & \textbf{Best: 65/12/23 blend} \\
+Lag-365 từ 2022                    & 902.623 & Sai mùa vụ do COVID \\
+postcovid\_pure (2019--2022 shape) & 839.534 & 2021 lockdown làm nhiễu \\
+cal\_lgbm + k101 calibrate         & 647.372 & Golden-era shape \\
++ Hiệu chỉnh Aug 2023             & 636.370 & Rev $\times$0,809 + CR=1,369 \\
++ 3-way ensemble (65/12/23)        & 630.454 & Đa seed + lunar \\
+\textbf{+ COGS $\beta$=0,45}       & \textbf{628.317} & \textbf{Best submission} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Giải thích bằng ngôn ngữ kinh doanh:}
-Feature importance cho thấy \textbf{Fourier harmonics} chiếm ưu thế (mùa vụ Q2 tái hiện hàng năm),
-tiếp theo là \textbf{tet\_days\_diff} (Tết lệch 10--20 ngày/năm tạo biến động lớn tháng 1--2),
-và \textbf{DOM cycle} (DOM1 = ngày lương, spike 1,47$\times$; DOM2--5 crash do ``tiêu xong lương'').
-Urban Blowout tháng~8 năm lẻ phản ánh chiến lược \textit{loss leader}: bán lỗ để giải phóng tồn kho cuối mùa hè, tái diễn 5/5 năm lẻ quan sát.
+Feature importance (Hình~\ref{fig:forecast}b): Fourier harmonics chiếm ưu thế (mùa vụ Q2),
+tiếp theo khoảng cách Tết và chu kỳ DOM --- phù hợp với phát hiện EDA
+rằng doanh thu bị chi phối bởi nhịp mùa vụ và hành vi tiêu dùng theo kỳ lương.
 
 % ============================================================
 \section{Kết Luận}
 % ============================================================
 
-Năm chuỗi phân tích EDA hội tụ vào \textbf{bốn lỗ hổng} có tổng giá trị \textbf{653--773 triệu VND/năm}
---- phục hồi không cần mở rộng thị trường.
-Pipeline dự báo calendar-only LightGBM với 3-way ensemble blending đạt MAE \textbf{630.454} trên Kaggle,
-chứng minh rằng seasonal shape từ Golden Era vẫn giải thích tốt hành vi tiêu dùng 2023--2024.
-Ưu tiên triển khai: \textbf{size guide} $\to$ \textbf{safety stock + win-back} $\to$ \textbf{promo Q2 shift}.
+Bốn phân tích EDA xác định bốn điểm nghẽn nội bộ trị giá 653--773 triệu VND/năm.
+Pipeline calendar-only LightGBM đạt MAE \textbf{628.317} trên Kaggle.
+Ưu tiên: size guide $\to$ safety stock + win-back $\to$ promo shift Q2.
 
 % ============================================================
-\begin{thebibliography}{9}
+\begin{thebibliography}{10}
 \bibitem{ke2017}
   Ke, G.\ et al.\ (2017).
-  LightGBM: A highly efficient gradient boosting decision tree. \emph{NeurIPS} 30.
+  LightGBM: A highly efficient gradient boosting decision tree. \emph{NeurIPS}~30.
 \bibitem{hyndman2018}
   Hyndman, R.J., Athanasopoulos, G.\ (2018).
   \emph{Forecasting: Principles and Practice}. 3rd ed., OTexts.
 \bibitem{lundberg2017}
   Lundberg, S.M., Lee, S.-I.\ (2017).
-  A unified approach to interpreting model predictions. \emph{NeurIPS} 30.
+  A unified approach to interpreting model predictions. \emph{NeurIPS}~30.
+\bibitem{fader2005}
+  Fader, P.S., Hardie, B.G.S., Lee, K.L.\ (2005).
+  RFM and CLV: Using iso-value curves for customer base analysis.
+  \emph{Journal of Marketing Research}, 42(4), 415--430.
+\bibitem{cachon2019}
+  Cachon, G.P., Gallino, S., Olivares, M.\ (2019).
+  Does adding inventory increase sales?
+  \emph{Management Science}, 65(4), 1469--1485.
+\bibitem{makridakis2022}
+  Makridakis, S., Spiliotis, E., Assimakopoulos, V.\ (2022).
+  M5 accuracy competition: Results, findings, and conclusions.
+  \emph{Int.\ J.\ Forecasting}, 38(4), 1346--1364.
+\bibitem{vanheerde2004}
+  Van Heerde, H.J., Leeflang, P.S.H., Wittink, D.R.\ (2004).
+  Decomposing the sales promotion bump with store data.
+  \emph{Marketing Science}, 23(3), 317--334.
+\bibitem{misra2018}
+  Misra, R., Wan, M., McAuley, J.\ (2018).
+  Decomposing fit semantics for product size recommendation.
+  \emph{ACM RecSys}, 422--426.
+\bibitem{taylor2018}
+  Taylor, S.J., Letham, B.\ (2018).
+  Forecasting at scale.
+  \emph{The American Statistician}, 72(1), 37--45.
 \bibitem{kaggle}
-  VinDatathon 2026 Round 1.
+  VinDatathon 2026 Round~1.
   \url{https://www.kaggle.com/competitions/datathon-2026-round-1}
 \end{thebibliography}
 
