@@ -2,28 +2,36 @@
 
 **Team:** AIO_OIA | **Competition:** [Datathon 2026 — The Gridbreakers](https://www.kaggle.com/competitions/datathon-2026-round-1)
 
-Best Kaggle RMSE: **658,785**
+Best Kaggle MAE: **628,317**
 
 ---
 
 ## Structure
 
 ```
+├── docs/Style/
+│   ├── report_vi.tex              # Báo cáo chính (NeurIPS template, tiếng Việt)
+│   ├── report_vi.pdf              # PDF báo cáo
+│   └── neurips_2025.sty           # NeurIPS LaTeX style file
 ├── notebooks/
-│   └── 09_eda_complete.ipynb     # Full EDA — 7 stories, 16 figures (Part 2)
+│   ├── 09_eda_complete.ipynb      # Full EDA — 4 stories + figures (Part 2)
+│   ├── 10_mcq_verify.ipynb        # MCQ Part 1 answers
+│   ├── story1_revenue_overview.ipynb
+│   ├── story2_customer_churn.ipynb
+│   ├── story3_product_returns.ipynb
+│   ├── story4_inventory_stockout.ipynb
+│   └── story5_marketing_roi.ipynb
 ├── scripts/
-│   ├── run_baseline.py           # Pre-COVID seasonal model
-│   ├── creative_submissions.py   # DOW correction + seasonal variants
-│   ├── lgbm_v3_proper.py         # LightGBM residual model
-│   ├── dow_optimize.py           # DOW + ensemble optimization
-│   └── mcq_official.py           # MCQ Part 1 answers (data-driven)
-├── src/
-│   └── data/loader.py            # Data loading utilities
+│   ├── v22_targeted_fix.py        # Best submission pipeline (MAE 628,317)
+│   ├── run_baseline.py            # Pre-COVID seasonal model
+│   ├── creative_submissions.py    # DOW correction + seasonal variants
+│   ├── lgbm_v3_proper.py          # LightGBM residual model
+│   └── mcq_official.py            # MCQ answers (data-driven)
+├── src/                           # Data loading & feature engineering
 ├── submissions/
-│   └── ens_fine_a012.csv         # Best submission (RMSE 658,785)
-├── report/figures/               # All generated figures
-│   └── eda/                      # EDA story figures
-├── AIO_OIA.tex                   # NeurIPS-format report
+│   └── v22_b045.csv               # Best submission (MAE 628,317)
+├── report/figures/                 # All figures used in report
+│   └── eda/                       # EDA story figures
 └── requirements.txt
 ```
 
@@ -32,56 +40,42 @@ Best Kaggle RMSE: **658,785**
 ```bash
 pip install -r requirements.txt
 
-# 1. Generate DOW-corrected seasonal predictions
-python scripts/creative_submissions.py
+# Place raw data in src/data/raw/:
+#   sales.csv, sales_test.csv, orders.csv, order_items.csv,
+#   products.csv, customers.csv, etc.
 
-# 2. Train LightGBM residual model
+# Step 1: Generate base ensemble (v17 blend)
+python scripts/creative_submissions.py
 python scripts/lgbm_v3_proper.py
 
-# 3. Optimal ensemble (alpha=0.124)
-python scripts/dow_optimize.py
+# Step 2: Apply COGS beta fine-tuning (best submission)
+python scripts/v22_targeted_fix.py
 
-# Best output: submissions/ens_fine_a012.csv
+# Output: submissions/v22_b045.csv (MAE 628,317)
 ```
 
 ## Method
 
-Three-stage pipeline:
+Pipeline dự báo Revenue hàng ngày cho 548 ngày (01/2023–07/2024):
 
-1. **Pre-COVID seasonal profile** (2013-2018): Normalize each year by its annual mean, average by calendar date, re-normalize. Excludes COVID years (2019-2022) which have severely distorted patterns.
+1. **Calendar-only LightGBM**: Fourier harmonics, Tết proximity, DOM cycle, holiday flags. Trained with 100× sample weight on Golden Era (2014–2018). No lag features (would leak into test set).
 
-2. **Day-of-week correction**: Monthly x weekday residual factors from stable pre-COVID years. 15.6 pp weekly spread (Wed +7.1%, Sat -8.5%).
+2. **Level calibration**: 2023 daily mean = 4,135,973 VND, 2024 Jan–Jul mean = 4,967,327 VND.
 
-3. **LightGBM ensemble**: Train on DOW residuals with 48 features. Blend weight a* = 0.124 derived analytically from Kaggle parabola fit.
+3. **3-way ensemble**: cal_lgbm (65%) + v1_lgbm with lunar calendar (12%) + diverse pool of 20 models (23%).
+
+4. **August loss leader correction**: August odd-year Revenue × 0.809, COGS/Revenue = 1.369 (consistent 5/5 odd years in training data).
+
+5. **COGS derivation**: COGS = Revenue × empirical COGS/Revenue ratio by month and year parity (odd/even), blended with model COGS at β=0.45.
 
 ## Data
 
-Place raw data in `src/data/raw/`:
-- `sales.csv` — training data (2012-07-04 to 2022-12-31)
-- `sales_test.csv` — test period (2023-01-01 to 2024-07-01)
-- `orders.csv`, `order_items.csv`, `products.csv`, `customers.csv`, etc.
+Place raw data in `src/data/raw/`. Data not included (competition terms).
 
-Data not included (competition terms).
+## Report
 
-## EDA Notebook
+`docs/Style/report_vi.tex` — NeurIPS format, 4 pages:
+- Part 2: 4 EDA stories (Descriptive → Diagnostic → Predictive → Prescriptive)
+- Part 3: Forecasting pipeline, ablation study, feature importance
 
-`notebooks/09_eda_complete.ipynb` — 4-level analysis across 7 stories:
-
-| Story | Topic | Level |
-|-------|-------|-------|
-| 1 | Revenue trajectory & structural break | Descriptive + Diagnostic |
-| 2 | Customer activation & revenue per buyer | Descriptive + Diagnostic |
-| 3 | Stockout risk analysis | Diagnostic + Prescriptive |
-| 4 | Geographic revenue concentration | Descriptive + Diagnostic |
-| 5 | Promotion effectiveness | Diagnostic + Predictive |
-| 6 | Executive scorecard & 12-month roadmap | Prescriptive |
-| 7 | Tet + DOW + forecast bridge | Predictive + Prescriptive |
-
-## Key Results
-
-| Submission | Kaggle RMSE |
-|------------|-------------|
-| Lag-365 from 2022 | 902,623 |
-| Pre-COVID seasonal (tuned) | 691,282 |
-| + DOW correction | 682,679 |
-| + LightGBM ensemble (a=0.124) | **658,785** |
+Compile: `cd docs/Style && pdflatex report_vi.tex`
